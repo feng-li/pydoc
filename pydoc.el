@@ -56,8 +56,13 @@
   :group 'help)
 
 
-(defcustom pydoc-command "python -m pydoc"
+(defcustom pydoc-command "python3 -m pydoc"
   "The command to use to run pydoc."
+  :type 'string
+  :group 'pydoc)
+
+(defcustom pydoc-python-command "python3"
+  "The Python command to use to run pydoc."
   :type 'string
   :group 'pydoc)
 
@@ -460,7 +465,7 @@ Adapted from `help-make-xrefs'."
   "Return list of built in python modules."
   (mapcar
    'symbol-name
-   (read (shell-command-to-string "python -c \"import sys; print('({})'.format(' '.join(['\"{}\"'.format(x) for x in sys.builtin_module_names])))\""))))
+   (read (shell-command-to-string (concat pydoc-python-command " -c \"import sys; print('({})'.format(' '.join(['\"{}\"'.format(x) for x in sys.builtin_module_names])))\"")))))
 
 
 (defun pydoc-pip-version ()
@@ -481,9 +486,9 @@ Adapted from `help-make-xrefs'."
     (shell-command-to-string
      ;; Use either importlib_metadata (a backport of importlib.metadata) or
      ;; importlib.metadata itself if it is available.
-     (concat python-shell-interpreter " -c \"implib_meta_backport = None\nimplib_meta_python = None\ntry: import importlib_metadata;implib_meta_backport = importlib_metadata\nexcept: pass\ntry: import importlib.metadata;implib_meta_python = importlib.metadata\nexcept: pass\nimplib_meta = implib_meta_python or implib_meta_backport\nmods = sorted(map(lambda x: x.metadata['name'], implib_meta.distributions())); print('({})'.format(' '.join(['\"{}\"'.format(x) for x in mods])))  \"")
+     (concat pydoc-python-command " -c \"implib_meta_backport = None\nimplib_meta_python = None\ntry: import importlib_metadata;implib_meta_backport = importlib_metadata\nexcept: pass\ntry: import importlib.metadata;implib_meta_python = importlib.metadata\nexcept: pass\nimplib_meta = implib_meta_python or implib_meta_backport\nmods = sorted(map(lambda x: x.metadata['name'], implib_meta.distributions())); print('({})'.format(' '.join(['\"{}\"'.format(x) for x in mods])))  \"")
      ;; For older versions of Python.
-     ;; (concat python-shell-interpreter " -c \"import pip; mods = sorted([i.key for i in pip.get_installed_distributions()]); print('({})'.format(' '.join(['\"{}\"'.format(x) for x in mods])))  \"")
+     ;; (concat pydoc-python-command " -c \"import pip; mods = sorted([i.key for i in pip.get_installed_distributions()]); print('({})'.format(' '.join(['\"{}\"'.format(x) for x in mods])))  \"")
      ))))
 
 
@@ -491,7 +496,7 @@ Adapted from `help-make-xrefs'."
   "Return list of built in python modules."
   (mapcar
    'symbol-name
-   (read (shell-command-to-string "python -c \"import pkgutil; print('({})'.format(' '.join(['\"{}\"'.format(x[1]) for x in pkgutil.iter_modules()])))\""))))
+   (read (shell-command-to-string (concat pydoc-python-command " -c \"import pkgutil; print('({})'.format(' '.join(['\"{}\"'.format(x[1]) for x in pkgutil.iter_modules()])))\"")))))
 
 
 (defun pydoc-topics ()
@@ -499,7 +504,7 @@ Adapted from `help-make-xrefs'."
   (apply
    'append
    (mapcar (lambda (x) (split-string x " " t " "))
-	   (cdr (split-string  (shell-command-to-string "python -m pydoc topics") "\n" t " ")))))
+	   (cdr (split-string  (shell-command-to-string (concat pydoc-command  "topics")) "\n" t " ")))))
 
 
 (defun pydoc-keywords ()
@@ -507,7 +512,7 @@ Adapted from `help-make-xrefs'."
   (apply
    'append
    (mapcar (lambda (x) (split-string x " " t " "))
-	   (cdr (split-string  (shell-command-to-string "python -m pydoc keywords") "\n" t " ")))))
+	   (cdr (split-string  (shell-command-to-string (concat pydoc-command "keywords")) "\n" t " ")))))
 
 
 (defvar *pydoc-all-modules*
@@ -779,7 +784,7 @@ There is no way right now to get to the full module path. This is a known limita
 	  (format
 	   "import jedi
 s = jedi.Script(\"\"\"%s\"\"\", %s, %s, path=\"%s\")
-gd = s.goto_definitions()
+gd = s.infer() #  Jedi >= 0.16.0
 
 version = [int(x) for x in jedi.__version__.split('.')]
 
@@ -823,7 +828,7 @@ OTHER MODULES IN THIS FILE
     (pydoc-with-help-window (pydoc-buffer)
       (with-temp-file tfile
 	(insert python-script))
-      (call-process-shell-command (concat "python " tfile)
+      (call-process-shell-command (concat pydoc-python-command " " tfile)
 				  nil standard-output)
       (delete-file tfile))))
 
